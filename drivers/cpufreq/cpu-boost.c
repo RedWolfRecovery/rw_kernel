@@ -67,8 +67,6 @@ static u64 last_input_time;
 static unsigned int min_input_interval = 150;
 module_param(min_input_interval, uint, 0644);
 
-static unsigned int big_nr_running;
-
 static int set_input_boost_freq(const char *buf, const struct kernel_param *kp)
 {
 	int i, ntokens = 0;
@@ -147,9 +145,6 @@ static int boost_adjust_notify(struct notifier_block *nb, unsigned long val,
 	if (!ib_min)
 		return NOTIFY_OK;
 
-		if (cpu == 4 && min > 0 && big_nr_running == 0)
-                        break;
-
 		min = min(min, policy->max);
 
 		pr_debug("CPU%u policy min before boost: %u kHz\n",
@@ -204,8 +199,6 @@ static void do_input_boost_rem(struct work_struct *work)
 		i_sync_info->input_boost_min = 0;
 	}
 
-	big_nr_running = 0;
-
 	/* Update policies for all online CPUs */
 	update_policy_online();
 
@@ -236,9 +229,6 @@ static void do_input_boost(struct work_struct *work)
 	for_each_possible_cpu(i) {
 		i_sync_info = &per_cpu(sync_info, i);
 		i_sync_info->input_boost_min = i_sync_info->input_boost_freq;
-
-		if (i >= 4)
-			big_nr_running += cpu_rq(i)->nr_running;
 	}
 
 	/* Update policies for all online CPUs */
