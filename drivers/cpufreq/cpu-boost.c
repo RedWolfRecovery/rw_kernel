@@ -27,10 +27,13 @@
 #include <linux/state_notifier.h>
 #endif
 
+#include "../../kernel/sched/sched.h"
+
 struct cpu_sync {
 	int cpu;
 	unsigned int input_boost_min;
 	unsigned int input_boost_freq;
+	unsigned int nr_running;
 };
 
 static DEFINE_PER_CPU(struct cpu_sync, sync_info);
@@ -63,6 +66,8 @@ static u64 last_input_time;
 
 static unsigned int min_input_interval = 150;
 module_param(min_input_interval, uint, 0644);
+
+static unsigned int cnt_nr_running;
 
 static int set_input_boost_freq(const char *buf, const struct kernel_param *kp)
 {
@@ -151,7 +156,12 @@ static int boost_adjust_notify(struct notifier_block *nb, unsigned long val,
 	if (!ib_min)
 		return NOTIFY_OK;
 
-	min = min(ib_min, policy->max);
+		if (cpu == 4 && min > 0 && cnt_nr_running == 0)
+                        break;
+
+		pr_debug("CPU%u policy min before boost: %u kHz\n",
+			 cpu, policy->min);
+		pr_debug("CPU%u boost min: %u kHz\n", cpu, min);
 
 	pr_debug("CPU%u policy min before boost: %u kHz\n",
 		 cpu, policy->min);
@@ -177,7 +187,8 @@ static void update_policy_online(void)
 	get_online_cpus();
 	for_each_online_cpu(i) {
 		pr_debug("Updating policy for CPU%d\n", i);
-		cpufreq_update_policy(i);
+		if (i == 0 || i == 4)
+			cpufreq_update_policy(i);
 	}
 	put_online_cpus();
 }
@@ -193,6 +204,8 @@ static void do_input_boost_rem(struct work_struct *work)
 		i_sync_info = &per_cpu(sync_info, i);
 		i_sync_info->input_boost_min = 0;
 	}
+
+	cnt_nr_running = 0;
 
 	/* Update policies for all online CPUs */
 	update_policy_online();
@@ -221,6 +234,9 @@ static void do_input_boost(struct work_struct *work)
 	for_each_possible_cpu(i) {
 		i_sync_info = &per_cpu(sync_info, i);
 		i_sync_info->input_boost_min = i_sync_info->input_boost_freq;
+
+		if (i >= 4)
+			cnt_nr_running += cpu_rq(i)->nr_running;
 	}
 
 	/* Update policies for all online CPUs */
@@ -252,7 +268,8 @@ static void cpuboost_input_event(struct input_handle *handle,
 		return;
 #endif
 
-	if (!input_boost_enabled || work_pending(&input_boost_work))
+	now = ktime_to_us(ktime_get());
+	if (now - last_input_time < (input_boost_ms * USEC_PER_MSEC))
 		return;
 
 	now = ktime_to_us(ktime_get());
