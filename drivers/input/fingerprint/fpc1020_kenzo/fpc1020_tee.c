@@ -76,7 +76,6 @@ struct fpc1020_data {
 	struct input_dev *input_dev;
 };
 
-#ifdef CONFIG_MACH_XIAOMI_KENZO
 unsigned int kenzo_fpsensor = 1;
 static int __init setup_kenzo_fpsensor(char *str)
 {
@@ -86,7 +85,6 @@ static int __init setup_kenzo_fpsensor(char *str)
 	return kenzo_fpsensor;
 }
 __setup("androidboot.fpsensor=", setup_kenzo_fpsensor);
-#endif
 
 static int vreg_setup(struct fpc1020_data *fpc1020, const char *name,
 		      bool enable)
@@ -331,12 +329,10 @@ static int fpc1020_probe(struct platform_device* pdev)
 	struct device_node *np = dev->of_node;
 	struct fpc1020_data *fpc1020;
 
-#ifdef CONFIG_MACH_XIAOMI_KENZO
 	if (kenzo_fpsensor != 1) {
 		pr_err("board no fpc fpsensor\n");
 		return -ENODEV;
 	}
-#endif
 
 	fpc1020 = devm_kzalloc(dev, sizeof(*fpc1020),
 						    GFP_KERNEL);
