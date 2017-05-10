@@ -474,8 +474,7 @@ out:
 	file->private_data = NULL;
 
 	if (err != -ENOENT)
-		ubifs_err("cannot find next direntry, error %d", c->vi.ubi_num,
-				err);
+		ubifs_err("cannot find next direntry, error %d", err);
 	else
 		/*
 		 * -ENOENT is a non-fatal error in this context, the TNC uses

@@ -3295,7 +3295,7 @@ static bool cfq_dispatch_request(struct cfq_data *cfqd, struct cfq_queue *cfqq)
 	if (!rq)
 		rq = cfqq->next_rq;
 	else
-		cfq_log_cfqq(cfqq->cfqd, cfqq, "fifo=%pK", rq);
+		cfq_log_cfqq(cfqq->cfqd, cfqq, "fifo=%p", rq);
 
 	/*
 	 * insert request into driver dispatch list
